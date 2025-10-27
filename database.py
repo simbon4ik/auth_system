@@ -21,7 +21,7 @@ class User(base_table_class):
     hashed_password = Column(String(255), nullable = False)
     is_active = Column(Boolean, default = True)
     last_logout_time = Column(DateTime, nullable = True)
-    created_at = Column(DateTime, default = datetime)
+    created_at = Column(DateTime, default = datetime.utcnow)
 
 class RefreshToken(base_table_class):
     __tablename__ = "refresh_tokens"
@@ -31,7 +31,7 @@ class RefreshToken(base_table_class):
     token_hash = Column(String(255), unique = True, nullable = False)
     expires_at = Column(DateTime, nullable = False)
     is_revoked = Column(Boolean, default = False)
-    created_at = Column(DateTime, default = datetime)
+    created_at = Column(DateTime, default = datetime.utcnow)
 
 #Create tables
 def create_tables():
@@ -39,7 +39,7 @@ def create_tables():
 
 #Dependency in database
 def get_db():
-    db = session_local      #open new session
+    db = session_local()      #open new session
     try:
         yield db            #session to endpoint
     finally:
