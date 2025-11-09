@@ -1,24 +1,29 @@
 from fastapi import FastAPI, HTTPException, Response, Depends
 from authx import AuthX
-from config import AuthConfig, Settings
+from settings.config import AuthConfig, Settings
 from pydantic import BaseModel
-from database import get_db, create_tables, User  # ⬅️ Импортируем БД
+from database.database import get_db, create_tables, User  # import BD
 from sqlalchemy.orm import Session
 from datetime import datetime
-from config import settings
+from settings.config import settings
 
+from slowapi import Limiter
+from slowapi.util import get_remote_address #for get ip from http
 
 from fastapi import Request
 import jwt
-from config import AuthConfig
+from settings.config import AuthConfig
 
-# Инициализация конфига для проверки токенов
+# Initialize config for check tokens
 auth_config = AuthConfig()
 
 app = FastAPI()
 security = AuthX(config=auth_config)
 
-# СОЗДАЕМ ТАБЛИЦЫ ПРИ СТАРТЕ
+# Initialize limit to protect brut force
+limiter = Limiter(key_func=get_remote_address)
+
+#Create tables with start app
 @app.on_event("startup")
 def startup():
     create_tables()
@@ -33,35 +38,36 @@ class UserRegister(BaseModel):
     email: str
     password: str
 
-# РЕГИСТРАЦИЯ (записывает в БД)
+# Register (writing to bd)
 @app.post("/register")
 def register(user_data: UserRegister, db: Session = Depends(get_db)):
-    # Проверяем нет ли пользователя
+    # Check for user's existance
     existing_user = db.query(User).filter(User.username == user_data.username).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists")
     
-    # Создаем нового пользователя
+    # Create new user
     new_user = User(
         username=user_data.username,
         email=user_data.email,
-        hashed_password=user_data.password  # Пока без хэширования
+        hashed_password=user_data.password  # Add hash function
     )
     db.add(new_user)
     db.commit()
     
     return {"message": "User created", "user_id": new_user.id}
 
-# ЛОГИН (читает из БД)
+# Login (read from BD)
 @app.post("/login")
-def login(user_data: UserLogin, response: Response, db: Session = Depends(get_db)):
-    # Ищем пользователя в БАЗЕ ДАННЫХ
+@limiter.limit("5/minute")
+def login(request: Request, user_data: UserLogin, response: Response, db: Session = Depends(get_db)):
+    # Find user in BD
     user = db.query(User).filter(User.username == user_data.username).first()
     
     if not user or user.hashed_password != user_data.password:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # Создаем токен
+    # Create token
     token = security.create_access_token(uid=str(user.id))
     
     return {"access_token": token}
@@ -84,7 +90,7 @@ def logout(response: Response, db: Session = Depends(get_db), request: Request =
 
 
 
-# ЗАЩИЩЕННЫЙ РОУТ С ПРОВЕРКОЙ'''
+# Protected route with check token
 
 @app.get("/protected")
 def protected_route(request: Request, db: Session = Depends(get_db)):
