@@ -1,16 +1,12 @@
-#import os                                   #for work with env's vars
 from pydantic_settings import BaseSettings  #
 from authx import AuthXConfig               #for authx config
 from datetime import timedelta
 
 class Settings(BaseSettings):
-    #Database settings
-    DATABASE_URL: str = "sqlite:///./auth_system.db"
-
-    #JWT settings
-    JWT_SECRET_KEY: str = "LOMQBWRJK4JKLUH328FDFZA"
+    DATABASE_URL: str
+    JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRES: timedelta = timedelta(minutes=2)     #15 minutes for access token
+    JWT_ACCESS_TOKEN_EXPIRES: timedelta = timedelta(minutes=2)     #2 minutes for access token
     JWT_REFRESH_TOKEN_EXPIRES: timedelta = timedelta(days=28)      #28 days for refresh token (keep in HTTP-only cookie)
 
     #Cookie settings
@@ -23,9 +19,9 @@ class Settings(BaseSettings):
     JWT_COOKIE_SAMESITE: str = "lax"      #protect for CSRF (block post requests from other site)
     JWT_COOKIE_CSRF_PROTECT: bool = True  #more protect
 
- #   class Config:
-  #      env_file = ".env"           #for read environment - pydantic
-   #     env_file_encoding = "utf-8" 
+    class Config:
+        env_file = ".env"           #for read environment - pydantic
+        env_file_encoding = "utf-8" 
 
 settings = Settings()
 
