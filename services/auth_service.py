@@ -63,7 +63,6 @@ class AuthService:
 
         # Create token
         access_token = AuthService.create_new_token(user_id = str(user.id), role = user.role)
-        print(access_token)
 
         refresh_token = security.create_refresh_token(
             uid=str(user.id),
