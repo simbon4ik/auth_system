@@ -10,18 +10,18 @@ class Settings(BaseSettings):
     #JWT settings
     JWT_SECRET_KEY: str = "LOMQBWRJK4JKLUH328FDFZA"
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRES: timedelta = timedelta(minutes=15)  #15 minutes for access token
+    JWT_ACCESS_TOKEN_EXPIRES: timedelta = timedelta(minutes=2)     #15 minutes for access token
     JWT_REFRESH_TOKEN_EXPIRES: timedelta = timedelta(days=28)      #28 days for refresh token (keep in HTTP-only cookie)
 
     #Cookie settings
     JWT_ACCESS_COOKIE_NAME: str = "access_token"
     JWT_REFRESH_COOKIE_NAME: str = "refresh_token"
-    JWT_TOKEN_LOCATION: list = ["headers"]
+    JWT_TOKEN_LOCATION: list = ["headers", "cookies"]
 
     JWT_COOKIE_HTTPONLY: bool = True      #protect for XSS (block access from JS to cookies)
     #JWT_COOKIE_SECURE: bool = True       #https is needed (cookie only with https)
     JWT_COOKIE_SAMESITE: str = "lax"      #protect for CSRF (block post requests from other site)
-    #JWT_COOKIE_CSRF_PROTECT: bool = True  #more protect
+    JWT_COOKIE_CSRF_PROTECT: bool = True  #more protect
 
  #   class Config:
   #      env_file = ".env"           #for read environment - pydantic

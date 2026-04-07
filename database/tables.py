@@ -2,6 +2,14 @@ from datetime import datetime
 from sqlalchemy import Column, String, DateTime, Boolean, Integer
 from sqlalchemy.ext.declarative import declarative_base
 
+import enum
+from sqlalchemy import Enum
+
+class UserRole(enum.IntEnum):
+    USER = 1
+    ADMIN = 2
+    SERVICE = 3  #For other systems
+
 table_class = declarative_base() 
 
 #Tables
@@ -15,6 +23,8 @@ class User(table_class):
     is_active = Column(Boolean, default = True)
     last_logout_time = Column(DateTime, nullable = True)
     created_at = Column(DateTime, default = datetime.utcnow)
+    role = Column(Enum(UserRole), default = UserRole.USER, index = True, nullable = False)
+    current_refresh_jti = Column(String, nullable=True)
 
 class RefreshToken(table_class):
     __tablename__ = "refresh_tokens"
