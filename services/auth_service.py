@@ -77,10 +77,10 @@ class AuthService:
         response.set_cookie(
             key="refresh_token",
             value=refresh_token,
-            httponly=True,     # Protect from XSS 
-#            secure=True,       # Only through HTTPS
-            samesite="lax",    # Protect from CSRF
-            max_age=28 * 24 * 3600 # Duration
+            httponly=True,              # Protect from XSS 
+#            secure=True,               # Only through HTTPS
+            samesite="lax",             # Protect from CSRF
+            max_age=28 * 24 * 3600      # Duration
         )
         return {"access_token": access_token}
 
