@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings  #
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from authx import AuthXConfig               #for authx config
 from datetime import timedelta
 
@@ -19,9 +19,11 @@ class Settings(BaseSettings):
     JWT_COOKIE_SAMESITE: str = "lax"      #protect for CSRF (block post requests from other site)
     JWT_COOKIE_CSRF_PROTECT: bool = True  #more protect
 
-    class Config:
-        env_file = ".env"           #for read environment - pydantic
-        env_file_encoding = "utf-8" 
+    model_config = SettingsConfigDict(
+        env_file=".env",            # Явно указываем читать файлы .env
+        env_file_encoding="utf-8",
+        extra="ignore"              # РАЗРЕШАЕМ лишние переменные (они просто будут игнорироваться)
+    )
 
 settings = Settings()
 
