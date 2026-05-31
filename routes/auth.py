@@ -4,28 +4,20 @@ from user_operations import UserRegister, UserLogin
 from database.create_tables import get_db
 from database.tables import User, UserRole
 from services.auth_service import AuthService, security
-# Берем чистый движок лимитов, БЕЗ slowapi
+from fastapi.security import HTTPBearer
 from limits import parse
 from limits.storage import MemoryStorage
 from limits.strategies import MovingWindowRateLimiter
 
-# 1. Инициализируем хранилище и стратегию (движок лимитера)
+# 1. Инициализируем хранилище, лимитер и класс HTTPBearer
+security_bearer = HTTPBearer(auto_error=False)
 storage = MemoryStorage()
 strategy = MovingWindowRateLimiter(storage)
 
 # 2. Создаем нашу собственную FastAPI-зависимость
-def rate_limit_dependency(request: Request):
-    token = AuthService.get_token_from_request(request)
-    role = None
-    user_id = None
-    # Пытаемся понять, кто к нам пришел
-    if token:
-        try:
-            payload = security._decode_token(token)
-            role = payload.role
-            user_id = payload.sub
-        except Exception:
-            pass
+def rate_limit_dependency(request: Request, current_user = Depends(security.access_token_required)):
+    role = current_user.role
+    user_id = current_user.sub
             
     # Динамически раздаем лимиты и ключи
     if role == UserRole.SERVICE.name:
@@ -56,7 +48,7 @@ class AccessChecker:
             raise HTTPException(status_code=403, detail="Not enough permissions")
         return token_payload
 
-router_auth = APIRouter()
+router_auth = APIRouter(tags=["Authentication"])
 
 # Register (writing to bd)
 @router_auth.post("/auth/register", dependencies=[Depends(rate_limit_dependency)])
@@ -69,15 +61,16 @@ def login(request: Request, user_data: UserLogin, response: Response, db: Sessio
     return AuthService.login_user(user_data, db, response)
 
 @router_auth.post("/auth/logout", dependencies=[Depends(rate_limit_dependency)])
-def logout(response: Response, db: Session = Depends(get_db), request: Request = None):
+def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     token = AuthService.get_token_from_request(request)
     return AuthService.logout_user(token, db, request)
 
 # Protected route with check token
 @router_auth.get("/audio/verify",
                 dependencies=[
+                    Depends(AccessChecker(["SERVICE", "ADMIN"])),
                     Depends(rate_limit_dependency),
-                    Depends(AccessChecker(["SERVICE", "ADMIN"]))
+                    Depends(security_bearer)
                 ])
 def protected_route(request: Request, db: Session = Depends(get_db)):
     token = AuthService.get_token_from_request(request)
