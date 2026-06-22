@@ -9,17 +9,25 @@ from limits import parse
 from limits.storage import MemoryStorage
 from limits.strategies import MovingWindowRateLimiter
 
-# 1. Инициализируем хранилище, лимитер и класс HTTPBearer
+# initialize the storage and rate limiter
 security_bearer = HTTPBearer(auto_error=False)
 storage = MemoryStorage()
 strategy = MovingWindowRateLimiter(storage)
 
-# 2. Создаем нашу собственную FastAPI-зависимость
-def rate_limit_dependency(request: Request, current_user = Depends(security.access_token_required)):
-    role = current_user.role
-    user_id = current_user.sub
-            
-    # Динамически раздаем лимиты и ключи
+# create rate_limit dependency
+def rate_limit_dependency(request: Request):
+    token = AuthService.get_token_from_request(request)
+    user_id = None
+    role = None
+
+    if token:
+        try:
+            payload = security._decode_token(token)
+            user_id = payload.sub
+            role = payload.get("role")
+        except Exception:
+            pass  # user is anon if there is no token in request
+
     if role == UserRole.SERVICE.name:
         limit_str = "120/minute"
         key = f"service_{user_id}"
@@ -27,11 +35,11 @@ def rate_limit_dependency(request: Request, current_user = Depends(security.acce
         limit_str = "10/minute"
         key = f"user_{user_id}"
     else:
-        # Для неавторизованных (регистрация/логин) берем IP
+        # IP limit for anon
         limit_str = "10/minute"
-        key = request.client.host 
+        key = request.client.host if request.client else "unknown"
 
-    # Проверяем лимит в движке
+    # check limit
     limit_obj = parse(limit_str)
     if not strategy.hit(limit_obj, key):
         raise HTTPException(
@@ -50,12 +58,10 @@ class AccessChecker:
 
 router_auth = APIRouter(tags=["Authentication"])
 
-# Register (writing to bd)
 @router_auth.post("/auth/register", dependencies=[Depends(rate_limit_dependency)])
 def register(request: Request, user_data: UserRegister, db: Session = Depends(get_db)):
     return AuthService.register_user(user_data, db)
 
-# Login (read from BD)
 @router_auth.post("/auth/login", dependencies=[Depends(rate_limit_dependency)])
 def login(request: Request, user_data: UserLogin, response: Response, db: Session = Depends(get_db)):
     return AuthService.login_user(user_data, db, response)
@@ -65,7 +71,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     token = AuthService.get_token_from_request(request)
     return AuthService.logout_user(token, db, request)
 
-# Protected route with check token
+# protected route with check token
 @router_auth.get("/audio/verify",
                 dependencies=[
                     Depends(AccessChecker(["SERVICE", "ADMIN"])),

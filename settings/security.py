@@ -2,7 +2,7 @@ from passlib.hash import argon2
 from authx import AuthX
 from settings.config import AuthConfig
 
-# Initialize config for check tokens
+# initialize config for check tokens
 auth_config = AuthConfig()
 security = AuthX(config=auth_config)
 
